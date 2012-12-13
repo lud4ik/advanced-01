@@ -2,8 +2,11 @@ from .exceptions import ValidationError
 
 
 class Field:
+    _type = NotImplemented
 
     def __get__(self, instance, owner):
+        if instance is None:
+            return self
         return instance.__dict__[self.name]
 
     def __set__(self, instance, value):
@@ -23,6 +26,18 @@ class Cmd(Field):
         self.id = _id
 
 
+class Int(Field):
+    _type = int
+
+    @staticmethod
+    def serialize(value):
+        return value.to_bytes(4, 'little')
+
+    @staticmethod
+    def deserialize(value):
+        return (int.from_bytes(value[:4], 'little'), value[4:])
+
+
 class Str(Field):
     _type = str
 
@@ -35,20 +50,11 @@ class Str(Field):
 
     @staticmethod
     def serialize(value):
-        return bytes(value, 'utf-8')
+        data = bytes(value, 'utf-8')
+        return Int.serialize(len(data)) + data
 
     @staticmethod
     def deserialize(value):
-        return (value.decode('utf-8'), None)
-
-
-class Int(Field):
-    _type = int
-
-    @staticmethod
-    def serialize(value):
-        return value.to_bytes(4, 'little')
-
-    @staticmethod
-    def deserialize(value):
-        return int.from_bytes(value, 'little')
+        _len, tail = Int.deserialize(value)
+        data, tail = tail[:_len], tail[_len:]
+        return (data.decode('utf-8'), tail)

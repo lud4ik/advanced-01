@@ -77,8 +77,7 @@ class Feeder:
         if self._len is None:
             if len(buffer) < self.LENGTH:
                 return None, buffer
-            self._len = Int.deserialize(buffer[:self.LENGTH])
-            buffer = buffer[self.LENGTH:]
+            self._len, buffer = Int.deserialize(buffer)
 
         if len(buffer) < self._len:
             return None, buffer

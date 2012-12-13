@@ -40,8 +40,8 @@ class CommandServer:
     @classmethod
     def run_server(cls, host, port):
         server = cls(host, port)
+        handler = signal.signal(signal.SIGINT, shutdown_handler)
         try:
-            handler = signal.signal(signal.SIGINT, shutdown_handler)
             with open(cls.PID_FILE, 'w') as f:
                 f.write(str(os.getpid()))
             server.run()

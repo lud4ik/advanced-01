@@ -5,7 +5,7 @@ import logging
 
 from work.protocol import Feeder, Packet
 from work.models import cmd
-from work.utils import configure_logging
+from work.utils import configure_logging, packet_from_code
 from work.cmdargs import get_cmd_args
 from work.exceptions import ClientFinishException
 
@@ -30,8 +30,8 @@ class CommandClient:
     @classmethod
     def run_client(cls, host, port):
         client = cls(host, port)
+        handler = signal.signal(signal.SIGINT, shutdown_handler)
         try:
-            handler = signal.signal(signal.SIGINT, shutdown_handler)
             client.run()
         except (OSError, socket.timeout, ClientFinishException):
             client.shutdown()
@@ -41,13 +41,11 @@ class CommandClient:
     def run(self):
         self.feeder = Feeder(self.commands)
         while True:
-            command = input().split()
-            kwargs = {}
-            cmd_input = getattr(cmd, command[0].upper())
-            if cmd_input == cmd.PINGD:
-                kwargs['data'] = command[1]
-            packet = eval('{}(**kwargs).pack()'.format(command[0]))
-            self.socket.sendall(packet)
+            print('Ender command: \n1 - CONNECT;\n2 - PING;'
+                  '\n3 <data>- PINGD;\n4 - QUIT;\n5 - FINISH.\n')
+            result = input().split()
+            packet = packet_from_code(result)
+            self.socket.sendall(packet.pack())
             self.recv_response()
 
     def recv_response(self):

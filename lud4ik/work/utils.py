@@ -5,6 +5,8 @@ import logging
 from inspect import signature
 from contextlib import contextmanager
 
+from .protocol import Packet
+
 
 def format_reply(reply):
     byte_reply = bytes(reply, 'utf-8')
@@ -55,3 +57,13 @@ def configure_logging(who):
         level=logging.INFO,
         format= who +' [%(levelname)s] (%(threadName)s) %(message)s',
     )
+
+
+def packet_from_code(result):
+    cmd = int(result[0])
+    cls = Packet.__class__.packets.get(cmd)
+    kwargs = {}
+    keys = list(cls.fields.keys())[1:]
+    for i, attr in enumerate(keys, start=1):
+        kwargs[attr] = result[i]
+    return cls(**kwargs)
