@@ -53,9 +53,9 @@ def get_keyword_args(function):
 
 def configure_logging(who):
     logging.basicConfig(
-        filename = './tmp.log',
+        filename='./tmp.log',
         level=logging.INFO,
-        format= who +' [%(levelname)s] (%(threadName)s) %(message)s',
+        format=who + ' [%(levelname)s] (%(threadName)s) %(message)s',
     )
 
 
