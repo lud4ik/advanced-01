@@ -8,13 +8,9 @@ from work.cmdargs import get_cmd_args
 from work.utils import get_random_hash
 
 
-READ_ONLY = EPOLLIN | EPOLLHUP | EPOLLERR
-EDGE_MASK = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLHUP | EPOLLERR
-ERRORS = (EPOLLHUP, EPOLLERR)
-
-
 class ClientHandler:
 
+    ERRORS = (EPOLLHUP, EPOLLERR)
     CHUNK_SIZE = 1024
     commands = [cmd.CONNECT, cmd.PING, cmd.PINGD, cmd.QUIT, cmd.FINISH]
 
@@ -28,7 +24,7 @@ class ClientHandler:
         self.session = get_random_hash()
 
     def __call__(self, fd, event):
-        if event in ERRORS:
+        if event in self.ERRORS:
             print('error')
         elif event == EPOLLIN:
             print('EPOLLIN')
@@ -79,6 +75,8 @@ class ClientHandler:
 class AsyncCommandServer:
 
     MAX_CONN = 5
+    ERRORS = (EPOLLHUP, EPOLLERR)
+    EDGE_MASK = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLHUP | EPOLLERR
 
     def __init__(self, poller, host, port):
         self.clients = []
@@ -90,11 +88,11 @@ class AsyncCommandServer:
         self.socket.listen(self.MAX_CONN)
 
     def handle_accept(self, handlers, fd, event):
-        if event in ERRORS:
+        if event in self.ERRORS:
             print('error')
         conn, addr = self.socket.accept()
         self.clients.append(conn)
-        self.poller.register(conn, EDGE_MASK)
+        self.poller.register(conn, self.EDGE_MASK)
         handle_client = ClientHandler(self, conn, addr)
         handlers[conn.fileno()] = handle_client
 
@@ -116,6 +114,7 @@ class AsyncCommandServer:
 class Reactor:
 
     INTERVAL = 0.1
+    READ_ONLY = EPOLLIN | EPOLLHUP | EPOLLERR
 
     def __init__(self):
         self.poller = epoll()
