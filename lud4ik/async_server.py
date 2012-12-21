@@ -78,14 +78,16 @@ class AsyncCommandServer:
     ERRORS = (EPOLLHUP, EPOLLERR)
     EDGE_MASK = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLHUP | EPOLLERR
 
-    def __init__(self, poller, host, port):
+    def __init__(self, reactor, host, port):
         self.clients = []
-        self.poller = poller
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setblocking(False)
         self.socket.bind((host, port))
         self.socket.listen(self.MAX_CONN)
+        self.poller = reactor.poller
+        reactor.register_server(self.socket, self.handle_accept)
+
 
     def handle_accept(self, handlers, fd, event):
         if event in self.ERRORS:
@@ -133,6 +135,5 @@ class Reactor:
 if __name__ == '__main__':
     args = get_cmd_args()
     reactor = Reactor()
-    async_server = AsyncCommandServer(reactor.poller, args.host, args.port)
-    reactor.register_server(async_server.socket, async_server.handle_accept)
+    async_server = AsyncCommandServer(reactor, args.host, args.port)
     reactor.run()
