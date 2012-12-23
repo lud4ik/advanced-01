@@ -24,13 +24,14 @@ class ClientHandler:
         self.session = get_random_hash()
 
     def __call__(self, fd, event):
-        if event in self.ERRORS:
+        if any(event & e for e in self.ERRORS):
             print('error')
-        elif event == EPOLLIN:
+        if event & EPOLLIN:
             print('EPOLLIN')
-        elif event == EPOLLOUT:
-            print('EPOLLOUT')
             self.handle_read()
+        if event & EPOLLOUT:
+            print('EPOLLOUT')
+            self.handle_write()
 
     def handle_write(self):
         sent = self.conn.send(self.out_buffer)
@@ -47,28 +48,23 @@ class ClientHandler:
     def connect(self, packet):
         reply = packet.reply(self.session)
         self.out_buffer += reply
-        self.handle_write()
 
     def ping(self, packet):
         reply = packet.reply()
         self.out_buffer += reply
-        self.handle_write()
 
     def pingd(self, packet):
         reply = packet.reply()
         self.out_buffer += reply
-        self.handle_write()
 
     def quit(self, packet):
         reply = packet.reply(self.session)
         self.out_buffer += reply
-        self.handle_write()
         self.server.quit_client(self.conn)
 
     def finish(self, packet):
         reply = packet.reply()
         self.out_buffer += reply
-        self.handle_write()
         self.server.shutdown()
 
 
