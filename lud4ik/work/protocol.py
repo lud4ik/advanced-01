@@ -4,31 +4,52 @@ from .fields import Field, Int, Cmd
 from .exceptions import FieldDeclarationError, ValidationError
 
 
+class Namespace(OrderedDict):
+
+    def __init__(self, bases):
+        self._cmd = None
+        self._fields = OrderedDict()
+        self._set_bases_fields(bases)
+        super().__init__()
+
+    def _set_bases_fields(self, bases):
+        for cls in bases:
+            if issubclass(cls, Packet) and cls is not Packet:
+                self._fields.update(cls._fields)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+
+        if isinstance(value, Cmd):
+            self._cmd = value
+
+        if isinstance(value, Field):
+            value.name = key
+            self._fields[key] = value
+
+
 class MetaPacket(type):
 
     packets = {}
 
     def __prepare__(name, bases):
-        return OrderedDict()
+        return Namespace(bases)
 
-    def __init__(self, name, bases, dct):
-        if name == 'Packet':
+    def __init__(cls, name, bases, dct):
+        type.__init__(cls, name, bases, dct)
+
+        if name == "Packet":
             return
 
-        self.fields = OrderedDict()
-        for attr, value in dct.items():
-            if isinstance(value, Cmd):
-                cmd = value
-                if cmd.id in self.__class__.packets:
-                    raise FieldDeclarationError('Dublicate registered command.')
-            if isinstance(value, Field):
-                value.name = attr
-                self.fields[attr] = value
+        cls.fields = dct._fields
 
-        if not (self.fields and isinstance(next(iter(self.fields.values())), Cmd)):
+        if not (cls.fields and isinstance(next(iter(cls.fields.values())), Cmd)):
             raise FieldDeclarationError('Command shoud be first field.')
 
-        self.__class__.packets[cmd.id] = self
+        if dct._cmd.id in cls.__class__.packets:
+            raise FieldDeclarationError('Dublicate registered command.')
+
+        cls.__class__.packets[dct._cmd.id] = cls
 
 
 class Packet(metaclass=MetaPacket):
