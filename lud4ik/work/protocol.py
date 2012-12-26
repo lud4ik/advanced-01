@@ -37,9 +37,7 @@ class MetaPacket(type):
 
     def __init__(cls, name, bases, dct):
         type.__init__(cls, name, bases, dct)
-
-        if name == "Packet":
-            return
+        if not bases: return
 
         cls._fields = dct._fields
 
