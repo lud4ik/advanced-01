@@ -7,10 +7,10 @@ from .exceptions import FieldDeclarationError, ValidationError
 class Namespace(OrderedDict):
 
     def __init__(self, bases):
+        super().__init__()
         self._cmd = None
         self._fields = OrderedDict()
         self._set_bases_fields(bases)
-        super().__init__()
 
     def _set_bases_fields(self, bases):
         for cls in bases:
