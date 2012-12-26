@@ -41,9 +41,9 @@ class MetaPacket(type):
         if name == "Packet":
             return
 
-        cls.fields = dct._fields
+        cls._fields = dct._fields
 
-        if not (cls.fields and isinstance(next(iter(cls.fields.values())), Cmd)):
+        if not (cls._fields and isinstance(next(iter(cls._fields.values())), Cmd)):
             raise FieldDeclarationError('Command shoud be first field.')
 
         if dct._cmd.id in cls.__class__.packets:
@@ -55,8 +55,8 @@ class MetaPacket(type):
 class Packet(metaclass=MetaPacket):
 
     def __init__(self, **kwargs):
-        names = list(self.fields.keys())
-        cmd = self.fields[names[0]].id
+        names = list(self._fields.keys())
+        cmd = self._fields[names[0]].id
         setattr(self, names[0], cmd)
         for attr in names[1:]:
             value = kwargs.get(attr)
@@ -66,7 +66,7 @@ class Packet(metaclass=MetaPacket):
 
     def pack(self):
         result = bytes()
-        for attr, _type in self.fields.items():
+        for attr, _type in self._fields.items():
             result += _type.serialize(getattr(self, attr))
 
         return Int.serialize(len(result)) + result
@@ -79,7 +79,7 @@ class Packet(metaclass=MetaPacket):
             raise ValidationError()
 
         tail = data
-        for attr, _type in pack_cls.fields.items():
+        for attr, _type in pack_cls._fields.items():
             value, tail = _type.deserialize(tail)
             kwargs[attr] = value
 

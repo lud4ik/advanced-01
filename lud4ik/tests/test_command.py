@@ -77,3 +77,10 @@ class CommandTestCase(unittest.TestCase):
             class ErrorClass(Packet):
                 cmd = Cmd(cmd.CONNECTED)
                 data = Str(maxsize=256)
+
+    def test_inheritance(self):
+        TEST_COMMAND_ID = 13
+        class Test(PongD):
+            cmd = Cmd(TEST_COMMAND_ID)
+        self.assertTrue(Test.data == PongD.data)
+        self.assertTrue(Test.cmd.id == TEST_COMMAND_ID)
