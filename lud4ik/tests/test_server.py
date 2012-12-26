@@ -17,17 +17,19 @@ class ServerTestCase(unittest.TestCase):
 
     HOST = ''
     PORT = 50007
-    PID_FILE = 'server.pid'
+    TERMINATE_TIMEOUT = 1
 
     def setUp(self):
         self.server = subprocess.Popen(['python3.3', 'sync_server.py'])
         self.addCleanup(self.stop_server)
-        while True:
-            if os.path.exists(self.PID_FILE):
-                time.sleep(0.5)
-                break
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.HOST, self.PORT))
+        while True:
+            try:
+                self.socket.connect((self.HOST, self.PORT))
+            except ConnectionRefusedError:
+                time.sleep(0.01)
+            else:
+                break
 
     def stop_server(self):
         if self.server.poll() is None:
@@ -66,8 +68,5 @@ class ServerTestCase(unittest.TestCase):
         self.socket.sendall(packet)
         reply = Packet.unpack(get_msg(self.socket))
         self.assertIsInstance(reply, AckFinish)
-        while True:
-            if not os.path.exists(self.PID_FILE):
-                time.sleep(0.5)
-                break
+        self.server.wait(timeout=self.TERMINATE_TIMEOUT)
         self.assertTrue(self.server.poll() is not None)

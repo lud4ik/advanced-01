@@ -26,7 +26,6 @@ class CommandServer:
     MAX_CONN = 5
     TIMEOUT = 1.0
     CHUNK_SIZE = 1024
-    PID_FILE = 'server.pid'
     clients = {}
     commands = [cmd.CONNECT, cmd.PING, cmd.PINGD, cmd.QUIT, cmd.FINISH]
     templ = namedtuple('templ', 'addr, thread, session')
@@ -36,14 +35,13 @@ class CommandServer:
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.settimeout(self.TIMEOUT)
         self.socket.bind((host, port))
+        self.socket.listen(self.MAX_CONN)
 
     @classmethod
     def run_server(cls, host, port):
-        server = cls(host, port)
         handler = signal.signal(signal.SIGINT, shutdown_handler)
         try:
-            with open(cls.PID_FILE, 'w') as f:
-                f.write(str(os.getpid()))
+            server = cls(host, port)
             server.run()
         except (ServerFinishException, OSError):
             server.shutdown()
@@ -51,7 +49,6 @@ class CommandServer:
             signal.signal(signal.SIGINT, handler)
 
     def run(self):
-        self.socket.listen(self.MAX_CONN)
         while True:
             with handle_timeout():
                 conn, addr = self.socket.accept()
@@ -120,8 +117,6 @@ class CommandServer:
         for th in map(attrgetter('thread'), list(self.clients.values())):
             th.join()
         logging.info('threads closed')
-        if os.path.exists(self.PID_FILE):
-            os.remove(self.PID_FILE)
         raise SystemExit()
 
 
