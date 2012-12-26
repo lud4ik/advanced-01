@@ -8,7 +8,7 @@ import subprocess
 
 from work.utils import get_msg
 from work.protocol import Packet
-from command_server import CommandServer
+from sync_server import CommandServer
 from work.models import (cmd, Connected, Pong, PongD, AckQuit, AckFinish,
                          Connect, Ping, PingD, Quit, Finish)
 
@@ -20,7 +20,7 @@ class ServerTestCase(unittest.TestCase):
     PID_FILE = 'server.pid'
 
     def setUp(self):
-        self.server = subprocess.Popen(['python3.3', 'command_server.py'])
+        self.server = subprocess.Popen(['python3.3', 'sync_server.py'])
         self.addCleanup(self.stop_server)
         while True:
             if os.path.exists(self.PID_FILE):

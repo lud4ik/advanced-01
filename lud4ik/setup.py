@@ -11,5 +11,5 @@ setup(name='socket start',
         'Programming Language :: Python :: 3.3',
         ],
       packages=['work'],
-      py_modules = ['command_client', 'command_server'],
+      py_modules = ['sync_client', 'sync_server', 'async_server'],
     )
