@@ -54,13 +54,14 @@ class Packet(metaclass=MetaPacket):
 
     def __init__(self, **kwargs):
         names = list(self._fields.keys())
-        cmd = self._fields[names[0]].id
-        setattr(self, names[0], cmd)
-        for attr in names[1:]:
+        cmd_name, names = names[0], names[1:]
+        cmd_val = self._fields[cmd_name]
+        cmd_val.__set__(self, cmd_val.id)
+        for attr in names:
             value = kwargs.get(attr)
             if value is None:
                 raise ValidationError()
-            setattr(self, attr, value)
+            self._fields[attr].__set__(self, value)
 
     def pack(self):
         result = bytes()
