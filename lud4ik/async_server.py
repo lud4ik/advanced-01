@@ -143,7 +143,7 @@ class Eventloop:
     def call_soon(self, cb, *args):
         dcall = DelayedCall(self, time.monotonic(), cb, args)
         if dcall is not None:
-            heapq.heappush(self.later, dcall)
+            heapq.heappush(self.soon, dcall)
             return dcall
 
     def call_later(self, delay, cb, *args):
