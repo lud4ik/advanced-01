@@ -1,3 +1,4 @@
+import heapq
 import socket
 from functools import partial
 from select import epoll, EPOLLIN, EPOLLOUT, EPOLLET, EPOLLHUP, EPOLLERR
@@ -6,6 +7,7 @@ from work.models import cmd
 from work.protocol import Feeder
 from work.cmdargs import get_cmd_args
 from work.utils import get_random_hash
+from work.delayedcall import DelayedCall
 
 
 class ClientHandler:
@@ -109,27 +111,53 @@ class AsyncCommandServer:
         raise SystemExit()
 
 
-class Reactor:
+class Eventloop:
 
-    INTERVAL = 0.1
+    timeout = 0.1
     READ_ONLY = EPOLLIN | EPOLLHUP | EPOLLERR
 
     def __init__(self):
         self.poller = epoll()
         self.handlers = {}
+        self.running = False
+        self.soon = []
+        self.later = []
 
     def register_server(self, sock, handler, mask=READ_ONLY):
         self.handlers[sock.fileno()] = partial(handler, self.handlers)
         self.poller.register(sock, mask)
 
+    def run_once(self, timeout):
+        for (fd, event) in self.poller.poll(timeout):
+            self.handlers[fd](fd, event)
+
     def run(self):
-        while True:
-            for (fd, event) in self.poller.poll(self.INTERVAL):
+        self.running = True
+        while self.running:
+            for (fd, event) in self.poller.poll(self.timeout):
                 self.handlers[fd](fd, event)
+
+    def stop(self):
+        self.running = False
+
+    def call_soon(self, cb, *args):
+        dcall = DelayedCall(self, time.monotonic(), cb, args)
+        if dcall is not None:
+            heapq.heappush(self.later, dcall)
+            return dcall
+
+    def call_later(self, delay, cb, *args):
+        dcall = DelayedCall(self, time.monotonic() + delay, cb, args)
+        if dcall is not None:
+            heapq.heappush(self.later, dcall)
+            return dcall
+
+    def call_soon_threadsafe(self, cb, *args):
+        pass
 
 
 if __name__ == '__main__':
     args = get_cmd_args()
-    reactor = Reactor()
+    eventloop = Eventloop()
     async_server = AsyncCommandServer(reactor, args.host, args.port)
-    reactor.run()
+    eventloop.run()
