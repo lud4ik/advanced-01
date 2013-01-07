@@ -23,7 +23,7 @@ class DelayedCall:
     def validate_args(callback, args):
         try:
             assert callable(callback), ('callback should be any callable, '
-                                            'got {!r}'.format(callback))
+                                        'got {!r}'.format(callback))
             sig = signature(callback)
             sig.bind(*args)
         except (TypeError, AssertionError):
