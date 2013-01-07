@@ -25,7 +25,7 @@ class DelayedCall:
             assert callable(callback), ('callback should be any callable, '
                                         'got {!r}'.format(callback))
             sig = signature(callback)
-            sig.bind(*args)
+            sig.bind(None, *args) # None for eventloop
         except (TypeError, AssertionError):
             return
         else:
