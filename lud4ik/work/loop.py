@@ -82,8 +82,11 @@ class EventLoop:
     def run_in_executor(self, executor, cb, *args):
         future = executor.submit(cb, self, *args)
         def process_result(future):
-            result = future.result(timeout=self.DEFAULT_TIMEOUT)
-            print(result)
+            try:
+                result = future.result(timeout=self.DEFAULT_TIMEOUT)
+                print(result)
+            except CancelledError:
+                print('cancelled')
         future.add_done_callback(process_result)
 
     def register_server(self, sock, handler, mask=READ_ONLY):
