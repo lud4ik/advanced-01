@@ -80,7 +80,11 @@ class EventLoop:
             return dcall
 
     def run_in_executor(self, executor, cb, *args):
-        pass
+        future = executor.submit(cb, self, *args)
+        def process_result(future):
+            result = future.result(timeout=self.DEFAULT_TIMEOUT)
+            print(result)
+        future.add_done_callback(process_result)
 
     def register_server(self, sock, handler, mask=READ_ONLY):
         self.handlers[sock.fileno()] = partial(handler, self.handlers)
