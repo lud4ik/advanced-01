@@ -18,6 +18,7 @@ class EventLoop:
         self._running = False
         self._soon = []
         self._later = []
+        self._executors = []
         self.timeout = self.DEFAULT_TIMEOUT
         self._soon_lock = threading.RLock()
 
@@ -59,6 +60,8 @@ class EventLoop:
 
     def stop(self):
         self._running = False
+        for executor in self._executors:
+            executor.shutdown(wait=False)
 
     def call_soon(self, cb, *args):
         dcall = DelayedCall(self, time.monotonic(), cb, args)
@@ -81,13 +84,8 @@ class EventLoop:
 
     def run_in_executor(self, executor, cb, *args):
         future = executor.submit(cb, self, *args)
-        def process_result(future):
-            try:
-                result = future.result(timeout=self.DEFAULT_TIMEOUT)
-                print(result)
-            except CancelledError:
-                print('cancelled')
-        future.add_done_callback(process_result)
+        self._executors.append(executor)
+        return future
 
     def register_server(self, sock, handler, mask=READ_ONLY):
         self.handlers[sock.fileno()] = partial(handler, self.handlers)
