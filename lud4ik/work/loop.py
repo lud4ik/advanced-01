@@ -51,8 +51,9 @@ class EventLoop:
         except IndexError:
             self.timeout = self.DEFAULT_TIMEOUT
 
-        for cb in soon:
-            cb()
+        for dc in soon:
+            if not dc.cancelled:
+                dc()
         if self._soon:
             self.timeout = 0
 
