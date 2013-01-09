@@ -89,7 +89,7 @@ class AsyncCommandServer:
         self.socket.bind((host, port))
         self.socket.listen(self.MAX_CONN)
         self.event_loop = event_loop
-        reactor.register_server(self.socket, self.handle_accept)
+        event_loop.register_server(self.socket, self.handle_accept)
 
     def handle_accept(self, handlers, fd, event):
         if event in self.ERRORS:

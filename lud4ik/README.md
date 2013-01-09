@@ -7,5 +7,6 @@ http://www.tutorialspoint.com/python/python_networking.htm
 
 
 TODO:
+- handling errors (ConnectionError, BlockingIOError)
 - session in connected
 - executor result
