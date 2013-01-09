@@ -1,4 +1,5 @@
 import socket
+from operator import attrgetter
 from select import epoll, EPOLLIN, EPOLLOUT, EPOLLET, EPOLLHUP, EPOLLERR
 
 from work.models import cmd
@@ -67,7 +68,7 @@ class ClientHandler:
     def quit(self, packet):
         reply = packet.reply(self.session)
         self.server.reply_to_all(reply)
-        self.server.quit_client(self.conn)
+        self.server.quit_client(self)
 
     def finish(self, packet):
         reply = packet.reply()
@@ -95,15 +96,15 @@ class AsyncCommandServer:
         if event in self.ERRORS:
             print('error')
         conn, addr = self.socket.accept()
-        self.clients.append(conn)
         self.event_loop.poller.register(conn, self.EDGE_MASK)
-        handle_client = ClientHandler(self, conn, addr)
-        handlers[conn.fileno()] = handle_client
+        client_handler = ClientHandler(self, conn, addr)
+        self.clients.append(client_handler)
+        handlers[conn.fileno()] = client_handler
 
-    def quit_client(self, conn):
-        self.clients.remove(conn)
-        self.event_loop.poller.unregister(conn.fileno())
-        conn.close()
+    def quit_client(self, client):
+        self.clients.remove(client)
+        self.event_loop.poller.unregister(client.conn.fileno())
+        client.conn.close()
 
     def reply_to_all(self, data):
         for client in self.clients:
@@ -113,7 +114,7 @@ class AsyncCommandServer:
         poller = self.event_loop.poller
         poller.unregister(self.socket.fileno())
         self.socket.close()
-        for conn in self.clients:
+        for conn in map(attrgetter('conn'), self.clients):
             poller.unregister(conn.fileno())
             conn.close()
         poller.close()
@@ -124,4 +125,4 @@ if __name__ == '__main__':
     args = get_cmd_args()
     event_loop = EventLoop()
     async_server = AsyncCommandServer(event_loop, args.host, args.port)
-    eventloop.run()
+    event_loop.run()

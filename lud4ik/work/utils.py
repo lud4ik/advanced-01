@@ -63,7 +63,7 @@ def packet_from_code(result):
     cmd = int(result[0])
     cls = Packet.__class__.packets.get(cmd)
     kwargs = {}
-    keys = list(cls.fields.keys())[1:]
+    keys = list(cls._fields.keys())[1:]
     for i, attr in enumerate(keys, start=1):
         kwargs[attr] = result[i]
     return cls(**kwargs)
