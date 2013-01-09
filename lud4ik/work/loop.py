@@ -43,7 +43,7 @@ class EventLoop:
         try:
             dc = heapq.heappop(self._later)
             while dc <= now:
-                if not cb.cancelled:
+                if not dc.cancelled:
                     soon.append(dc)
                 dc = heapq.heappop(self._later)
             else:

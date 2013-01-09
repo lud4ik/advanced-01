@@ -13,7 +13,7 @@ class ClientHandler:
 
     ERRORS = (EPOLLHUP, EPOLLERR)
     CHUNK_SIZE = 1024
-    commands = [cmd.CONNECT, cmd.PING, cmd.PINGD, cmd.QUIT, cmd.FINISH]
+    commands = [cmd.CONNECT, cmd.PING, cmd.PINGD, cmd.DELAY, cmd.QUIT, cmd.FINISH]
 
     def __init__(self, server, conn, addr):
         self.server = server
@@ -49,6 +49,14 @@ class ClientHandler:
     def write_to_buffer(self, data):
         self.out_buffer += data
 
+    def delayed_write(self, event_loop, data):
+        self.write_to_buffer(data)
+        self.handle_write() # hack
+
+    def delayed_reply_to_all(self, eventloop, reply):
+        self.server.reply_to_all(reply)
+        self.handle_write() # hack
+
     def connect(self, packet):
         reply = packet.reply(self.session)
         self.server.reply_to_all(reply)
@@ -59,11 +67,11 @@ class ClientHandler:
 
     def pingd(self, packet):
         reply = packet.reply()
-        self.server.event_loop.call_later(5, self.server.reply_to_all, reply)
+        self.server.event_loop.call_later(5, self.delayed_reply_to_all, reply)
 
     def delay(self, packet):
         reply = packet.reply()
-        self.server.event_loop.call_later(5, self.write_to_buffer, reply)
+        self.server.event_loop.call_later(5, self.delayed_write, reply)
 
     def quit(self, packet):
         reply = packet.reply(self.session)

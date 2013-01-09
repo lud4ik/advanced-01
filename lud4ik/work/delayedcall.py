@@ -1,3 +1,4 @@
+import logging
 from numbers import Number
 from inspect import signature
 from functools import total_ordering
@@ -27,7 +28,8 @@ class DelayedCall:
             sig = signature(callback)
             sig.bind(None, *args) # None for eventloop
         except (TypeError, AssertionError):
-            return
+            logging.error('Invalid signature.')
+            return False
         else:
             return True
 

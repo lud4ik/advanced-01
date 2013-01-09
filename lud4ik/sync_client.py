@@ -17,9 +17,10 @@ def shutdown_handler(signum, frame):
 class CommandClient:
 
     session_id = None
-    TIMEOUT = 1.0
+    TIMEOUT = 10.0
     CHUNK_SIZE = 1024
-    commands = [cmd.CONNECTED, cmd.PONG, cmd.PONGD, cmd.ACKQUIT, cmd.ACKFINISH]
+    commands = [cmd.CONNECTED, cmd.PONG, cmd.PONGD, cmd.DELAYED,
+                cmd.ACKQUIT, cmd.ACKFINISH]
 
     def __init__(self, host, port):
         self.socket = socket.socket(socket.AF_INET,
@@ -41,8 +42,8 @@ class CommandClient:
     def run(self):
         self.feeder = Feeder(self.commands)
         while True:
-            print('Ender command: \n1 - CONNECT;\n2 - PING;\n3 <data>- PINGD;'
-                  '\n4 - DELAY;\n5 - QUIT;\n6 - FINISH.\n')
+            print('Ender command: \n1 - CONNECT;\n2 - PING;\n3 <data> - PINGD;'
+                  '\n4 <data> - DELAY;\n5 - QUIT;\n6 - FINISH.\n')
             result = input().split()
             packet = packet_from_code(result)
             self.socket.sendall(packet.pack())

@@ -10,3 +10,5 @@ TODO:
 - handling errors (ConnectionError, BlockingIOError)
 - session in connected
 - executor result
+- quit, finish bug
+- hack EPOLLOUT before dc
