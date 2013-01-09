@@ -41,8 +41,8 @@ class CommandClient:
     def run(self):
         self.feeder = Feeder(self.commands)
         while True:
-            print('Ender command: \n1 - CONNECT;\n2 - PING;'
-                  '\n3 <data>- PINGD;\n4 - QUIT;\n5 - FINISH.\n')
+            print('Ender command: \n1 - CONNECT;\n2 - PING;\n3 <data>- PINGD;'
+                  '\n4 - DELAY;\n5 - QUIT;\n6 - FINISH.\n')
             result = input().split()
             packet = packet_from_code(result)
             self.socket.sendall(packet.pack())
@@ -67,6 +67,9 @@ class CommandClient:
         print(packet.cmd)
 
     def pongd(self, packet):
+        print('{} {}'.format(packet.cmd, packet.data))
+
+    def delayed(self, packet):
         print('{} {}'.format(packet.cmd, packet.data))
 
     def ackquit(self, packet):

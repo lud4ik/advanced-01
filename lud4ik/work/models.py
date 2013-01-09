@@ -6,13 +6,15 @@ class cmd:
     CONNECT = 1
     PING = 2
     PINGD = 3
-    QUIT = 4
-    FINISH = 5
-    CONNECTED = 6
-    PONG = 7
-    PONGD = 8
-    ACKQUIT = 9
-    ACKFINISH = 10
+    DELAY = 4
+    QUIT = 5
+    FINISH = 6
+    CONNECTED = 7
+    PONG = 8
+    PONGD = 9
+    DELAYED = 10
+    ACKQUIT = 11
+    ACKFINISH = 12
 
 
 class Connected(Packet):
@@ -27,6 +29,10 @@ class Pong(Packet):
 class PongD(Packet):
     cmd = Cmd(cmd.PONGD)
     data = Str(maxsize=256)
+
+
+class Delayed(PongD):
+    cmd = Cmd(cmd.DELAYED)
 
 
 class AckQuit(Packet):
@@ -58,6 +64,13 @@ class PingD(Packet):
 
     def reply(self):
         return PongD(data=self.data).pack()
+
+
+class Delay(PingD):
+    cmd = Cmd(cmd.DELAY)
+
+    def reply(self):
+        return Delayed(data=self.data).pack()
 
 
 class Quit(Packet):

@@ -45,9 +45,12 @@ class ClientHandler:
             process = getattr(self, packet.__class__.__name__.lower())
             process(packet)
 
+    def write_to_buffer(self, data):
+        self.out_buffer += data
+
     def connect(self, packet):
         reply = packet.reply(self.session)
-        self.out_buffer += reply
+        self.server.reply_to_all(reply)
 
     def ping(self, packet):
         reply = packet.reply()
@@ -55,16 +58,20 @@ class ClientHandler:
 
     def pingd(self, packet):
         reply = packet.reply()
-        self.out_buffer += reply
+        self.server.event_loop.call_later(5, self.server.reply_to_all, reply)
+
+    def delay(self, packet):
+        reply = packet.reply()
+        self.server.event_loop.call_later(5, self.write_to_buffer, reply)
 
     def quit(self, packet):
         reply = packet.reply(self.session)
-        self.out_buffer += reply
+        self.server.reply_to_all(reply)
         self.server.quit_client(self.conn)
 
     def finish(self, packet):
         reply = packet.reply()
-        self.out_buffer += reply
+        self.server.reply_to_all(reply)
         self.server.shutdown()
 
 
@@ -74,14 +81,14 @@ class AsyncCommandServer:
     ERRORS = (EPOLLHUP, EPOLLERR)
     EDGE_MASK = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLHUP | EPOLLERR
 
-    def __init__(self, reactor, host, port):
+    def __init__(self, event_loop, host, port):
         self.clients = []
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setblocking(False)
         self.socket.bind((host, port))
         self.socket.listen(self.MAX_CONN)
-        self.poller = reactor.poller
+        self.event_loop = event_loop
         reactor.register_server(self.socket, self.handle_accept)
 
     def handle_accept(self, handlers, fd, event):
@@ -89,27 +96,32 @@ class AsyncCommandServer:
             print('error')
         conn, addr = self.socket.accept()
         self.clients.append(conn)
-        self.poller.register(conn, self.EDGE_MASK)
+        self.event_loop.poller.register(conn, self.EDGE_MASK)
         handle_client = ClientHandler(self, conn, addr)
         handlers[conn.fileno()] = handle_client
 
     def quit_client(self, conn):
         self.clients.remove(conn)
-        self.poller.unregister(conn.fileno())
+        self.event_loop.poller.unregister(conn.fileno())
         conn.close()
 
+    def reply_to_all(self, data):
+        for client in self.clients:
+            client.write_to_buffer(data)
+
     def shutdown(self):
-        self.poller.unregister(self.socket.fileno())
+        poller = self.event_loop.poller
+        poller.unregister(self.socket.fileno())
         self.socket.close()
         for conn in self.clients:
-            self.poller.unregister(conn.fileno())
+            poller.unregister(conn.fileno())
             conn.close()
-        self.poller.close()
+        poller.close()
         raise SystemExit()
 
 
 if __name__ == '__main__':
     args = get_cmd_args()
-    eventloop = EventLoop()
-    async_server = AsyncCommandServer(reactor, args.host, args.port)
+    event_loop = EventLoop()
+    async_server = AsyncCommandServer(event_loop, args.host, args.port)
     eventloop.run()
