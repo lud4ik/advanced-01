@@ -112,3 +112,19 @@ class Feeder:
             buffer = buffer[self._len:]
             self._len = None
         return packet, buffer
+
+
+def genfeeder():
+    LENGTH = 4
+    buffer = bytes()
+    while True:
+        while len(buffer) < LENGTH:
+            buffer = yield None, buffer
+
+        _len, buffer = Int.deserialize(buffer)
+
+        while len(buffer) < _len:
+            buffer = yield None, buffer
+
+        packet = Packet.unpack(buffer[:_len])
+        buffer = yield packet, buffer[_len:]

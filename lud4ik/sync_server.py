@@ -7,7 +7,7 @@ import threading
 from operator import attrgetter
 from collections import namedtuple
 
-from work.protocol import Feeder
+from work.protocol import genfeeder
 from work.models import cmd
 from work.cmdargs import get_cmd_args
 from work.exceptions import ServerFinishException
@@ -40,8 +40,8 @@ class CommandServer:
     @classmethod
     def run_server(cls, host, port):
         handler = signal.signal(signal.SIGINT, shutdown_handler)
+        server = cls(host, port)
         try:
-            server = cls(host, port)
             server.run()
         except (ServerFinishException, OSError):
             server.shutdown()
@@ -59,20 +59,19 @@ class CommandServer:
                 th.start()
 
     def run_client(self, conn):
-        feeder = Feeder(self.commands)
-        tail = bytes()
+        feeder = genfeeder()
+        packet, tail = next(feeder)
         while True:
             try:
-                chunk = tail + conn.recv(self.CHUNK_SIZE)
-                packet, tail = feeder.feed(chunk)
-                if not packet:
-                    continue
+                while packet is None:
+                    packet, tail = feeder.send(tail + conn.recv(self.CHUNK_SIZE))
                 process = getattr(self, packet.__class__.__name__.lower())
                 kwargs = {}
                 kw_only = get_keyword_args(process)
                 if 'conn' in kw_only:
                     kwargs['conn'] = conn
                 process(packet, **kwargs)
+                packet = None
             except (socket.timeout, OSError):
                 conn.close()
                 self.clients.pop(conn, None)
