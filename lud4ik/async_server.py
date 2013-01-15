@@ -104,6 +104,7 @@ class AsyncCommandServer:
         if event in self.ERRORS:
             print('error')
         conn, addr = self.socket.accept()
+        conn.setblocking(False)
         self.event_loop.poller.register(conn, self.EDGE_MASK)
         client_handler = ClientHandler(self, conn, addr)
         self.clients.append(client_handler)
