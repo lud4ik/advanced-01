@@ -85,46 +85,22 @@ class Packet(metaclass=MetaPacket):
         return pack_cls(**kwargs)
 
 
-class Feeder:
-
-    LENGTH = 4
-
-    def __init__(self, commands):
-        self._len = None
-        self.commands = commands
-
-    def feed(self, buffer):
-        if self._len is None:
-            if len(buffer) < self.LENGTH:
-                return None, buffer
-            self._len, buffer = Int.deserialize(buffer)
-
-        if len(buffer) < self._len:
-            return None, buffer
-
-        try:
-            if buffer[0] not in self.commands:
-                raise ValidationError()
-            packet = Packet.unpack(buffer[:self._len])
-        except ValidationError:
-            packet = None
-        finally:
-            buffer = buffer[self._len:]
-            self._len = None
-        return packet, buffer
-
-
-def genfeeder():
+def feed():
     LENGTH = 4
     buffer = bytes()
     while True:
         while len(buffer) < LENGTH:
-            buffer = yield None, buffer
+            buffer += yield None
 
         _len, buffer = Int.deserialize(buffer)
 
         while len(buffer) < _len:
-            buffer = yield None, buffer
+            buffer += yield None
 
-        packet = Packet.unpack(buffer[:_len])
-        buffer = yield packet, buffer[_len:]
+        try:
+            packet = Packet.unpack(buffer[:_len])
+        except ValidationError:
+            packet = None
+        finally:
+            buffer = buffer[_len:]
+            buffer += yield packet

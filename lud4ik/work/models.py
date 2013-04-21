@@ -42,6 +42,7 @@ class AckQuit(Packet):
 
 class AckFinish(Packet):
     cmd = Cmd(cmd.ACKFINISH)
+    session = Str(maxsize=256)
 
 
 class Connect(Packet):
@@ -83,5 +84,5 @@ class Quit(Packet):
 class Finish(Packet):
     cmd = Cmd(cmd.FINISH)
 
-    def reply(self):
-        return AckFinish().pack()
+    def reply(self, session):
+        return AckFinish(session=session).pack()

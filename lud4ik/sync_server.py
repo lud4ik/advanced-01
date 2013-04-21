@@ -7,7 +7,7 @@ import threading
 from operator import attrgetter
 from collections import namedtuple
 
-from work.protocol import genfeeder
+from work.protocol import feed
 from work.models import cmd
 from work.cmdargs import get_cmd_args
 from work.exceptions import ServerFinishException
@@ -53,45 +53,40 @@ class CommandServer:
             with handle_timeout():
                 conn, addr = self.socket.accept()
                 th = threading.Thread(target=self.run_client, args=(conn, ))
-                self.clients[conn] = self.templ(addr=addr,
-                                                thread=th,
+                self.clients[conn] = self.templ(addr=addr, thread=th,
                                                 session=get_random_hash())
                 th.start()
 
     def run_client(self, conn):
-        feeder = genfeeder()
-        packet, tail = next(feeder)
+        feeder = feed()
+        packet = next(feeder)
         while True:
             try:
                 while packet is None:
-                    packet, tail = feeder.send(tail + conn.recv(self.CHUNK_SIZE))
-                process = getattr(self, packet.__class__.__name__.lower())
-                kwargs = {}
-                kw_only = get_keyword_args(process)
-                if 'conn' in kw_only:
-                    kwargs['conn'] = conn
-                process(packet, **kwargs)
-                packet = None
-            except (socket.timeout, OSError):
+                    packet = feeder.send(conn.recv(self.CHUNK_SIZE))
+                getattr(self, packet.__class__.__name__.lower())(packet, conn)
+            except OSError:
                 conn.close()
                 self.clients.pop(conn, None)
                 return
+            finally:
+                packet = None
 
-    def connect(self, packet, *, conn):
+    def connect(self, packet, conn):
         session = self.clients[conn].session
         reply = packet.reply(session)
         for client in list(self.clients.keys()):
             conn.sendall(reply)
 
-    def ping(self, packet, *, conn):
+    def ping(self, packet, conn):
         reply = packet.reply()
         conn.sendall(reply)
 
-    def pingd(self, packet, *, conn):
+    def pingd(self, packet, conn):
         reply = packet.reply()
         conn.sendall(reply)
 
-    def quit(self, packet, *, conn):
+    def quit(self, packet, conn):
         session = self.clients[conn].session
         reply = packet.reply(session)
         for client in list(self.clients.keys()):
@@ -100,8 +95,9 @@ class CommandServer:
         self.clients.pop(conn, None)
         raise SystemExit()
 
-    def finish(self, packet):
-        reply = packet.reply()
+    def finish(self, packet, conn):
+        session = self.clients[conn].session
+        reply = packet.reply(session)
         for client in list(self.clients.keys()):
             client.sendall(reply)
         os.kill(os.getpid(), signal.SIGINT)
