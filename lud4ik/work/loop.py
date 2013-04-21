@@ -74,7 +74,7 @@ def accept(factory, event):
     protocol.connection_made()
     transport = protocol.transport
     transport.conn, transport.protocol = conn, protocol
-    eventloop.handlers[conn.fileno()] = protocol.transport
+    eventloop.handlers[conn.fileno()] = transport
     eventloop.poller.register(conn, EDGE_MASK)
 
 
