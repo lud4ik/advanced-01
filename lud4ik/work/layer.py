@@ -71,6 +71,10 @@ class Factory:
         protocol.factory = self
         return protocol
 
+    def close(self):
+        self.eventloop.poller.unregister(self.socket.fileno())
+        self.socket.close()
+
 
 class Protocol(metaclass=abc.ABCMeta):
 
