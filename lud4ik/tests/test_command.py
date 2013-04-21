@@ -58,9 +58,10 @@ class CommandTestCase(unittest.TestCase):
         self.assertIsInstance(unpacked, AckQuit)
 
     def test_ackfinish(self):
-        packet = AckFinish()
-        self.assertIsInstance(Packet.unpack(packet.pack()[self.LENGTH:]),
-                              AckFinish)
+        packet = AckFinish(session='test_session')
+        unpacked = Packet.unpack(packet.pack()[self.LENGTH:])
+        self.assertEqual(packet.session, unpacked.session)
+        self.assertIsInstance(unpacked, AckFinish)
 
     def test_without_fields(self):
         with self.assertRaises(FieldDeclarationError):
