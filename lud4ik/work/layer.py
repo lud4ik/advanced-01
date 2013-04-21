@@ -21,7 +21,7 @@ class Transport:
     def abort(self):
         self.eventloop.poller.unregister(self.conn.fileno())
         self.eventloop.handlers.pop(self.conn.fileno(), None)
-        self.protocol.factory.clients.remove(self.conn)
+        self.protocol.factory.clients.remove(self.protocol)
         self.conn.close()
 
     def __call__(self, event):
@@ -73,8 +73,8 @@ class Factory:
 
     def create_protocol(self):
         transport  = Transport(self.eventloop)
-        self.clients.append(transport.conn)
         protocol = self.protocol(transport)
+        self.clients.append(protocol)
         protocol.factory = self
         return protocol
 
@@ -82,7 +82,8 @@ class Factory:
         poller = self.eventloop.poller
         poller.unregister(self.socket.fileno())
         self.socket.close()
-        for conn in self.clients[:]:
+        for protocol in self.clients[:]:
+            conn = protocol.transport.conn
             poller.unregister(conn.fileno())
             client.close()
 
