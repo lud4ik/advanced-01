@@ -2,7 +2,7 @@ import time
 import heapq
 import threading
 from functools import partial
-from select import epoll, EPOLLIN, EPOLLHUP, EPOLLERR
+from select import epoll, EPOLLIN, EPOLLOUT, EPOLLET, EPOLLHUP, EPOLLERR
 
 from .delayedcall import DelayedCall
 
@@ -81,6 +81,7 @@ def accept(factory, event):
 class EventLoop(TimeLoop):
 
     def __init__(self):
+        super().__init__()
         self.poller = epoll()
         self.handlers = {}
         self._executors = []

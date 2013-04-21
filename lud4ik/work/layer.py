@@ -1,10 +1,13 @@
 import abc
 import socket
+from select import EPOLLIN, EPOLLOUT, EPOLLHUP, EPOLLERR
 
 from .protocol import feed
 
 
 class Transport:
+
+    CHUNK_SIZE = 1024
 
     def __init__(self, eventloop):
         self.conn = None
@@ -18,6 +21,7 @@ class Transport:
     def abort(self):
         self.eventloop.poller.unregister(self.conn.fileno())
         self.eventloop.handlers.pop(self.conn.fileno(), None)
+        self.protocol.factory.clients.remove(self.conn)
         self.conn.close()
 
     def __call__(self, event):
@@ -34,13 +38,14 @@ class Transport:
                 pass
             except OSError as exc:
                 self.protocol.connection_lost(exc)
-                break
             self.protocol.data_received(self.in_buffer)
             self.in_buffer.clear()
         if event & EPOLLOUT:
             try:
                 sent = self.conn.send(self.out_buffer)
                 self.out_buffer = self.out_buffer[sent:]
+            except BlockingIOError:
+                pass
             except OSError as exc:
                 self.protocol.connection_lost(exc)
 
@@ -53,12 +58,13 @@ class Factory:
         self.eventloop = eventloop
         self.protocol = protocol
         self.socket = self.create_server()
+        self.clients = []
 
     def create_server(self):
-        socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        socket.setblocking(False)
-        return socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setblocking(False)
+        return sock
 
     def listen(self, host, port):
         self.socket.bind((host, port))
@@ -67,13 +73,18 @@ class Factory:
 
     def create_protocol(self):
         transport  = Transport(self.eventloop)
+        self.clients.append(transport.conn)
         protocol = self.protocol(transport)
         protocol.factory = self
         return protocol
 
     def close(self):
-        self.eventloop.poller.unregister(self.socket.fileno())
+        poller = self.eventloop.poller
+        poller.unregister(self.socket.fileno())
         self.socket.close()
+        for conn in self.clients[:]:
+            poller.unregister(conn.fileno())
+            client.close()
 
 
 class Protocol(metaclass=abc.ABCMeta):
@@ -89,7 +100,7 @@ class Protocol(metaclass=abc.ABCMeta):
     def data_received(self, data):
         pass
 
-    def connection_lost(self, reason):
+    def connection_lost(self, reason=None):
         if self.transport:
             self.transport.abort()
         self.transport = None

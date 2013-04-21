@@ -72,34 +72,29 @@ class CommandServer:
             finally:
                 packet = None
 
-    def connect(self, packet, conn):
+    def send_to_all(self, packet, conn):
         session = self.clients[conn].session
         reply = packet.reply(session)
         for client in list(self.clients.keys()):
-            conn.sendall(reply)
+            client.sendall(reply)
+
+    def connect(self, packet, conn):
+        self.send_to_all(packet, conn)
 
     def ping(self, packet, conn):
-        reply = packet.reply()
-        conn.sendall(reply)
+        conn.sendall(packet.reply())
 
     def pingd(self, packet, conn):
-        reply = packet.reply()
-        conn.sendall(reply)
+        conn.sendall(packet.reply())
 
     def quit(self, packet, conn):
-        session = self.clients[conn].session
-        reply = packet.reply(session)
-        for client in list(self.clients.keys()):
-            conn.sendall(reply)
+        self.send_to_all(packet, conn)
         conn.close()
         self.clients.pop(conn, None)
         raise SystemExit()
 
     def finish(self, packet, conn):
-        session = self.clients[conn].session
-        reply = packet.reply(session)
-        for client in list(self.clients.keys()):
-            client.sendall(reply)
+        self.send_to_all(packet, conn)
         os.kill(os.getpid(), signal.SIGINT)
         raise SystemExit()
 
