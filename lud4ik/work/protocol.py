@@ -87,7 +87,7 @@ class Packet(metaclass=MetaPacket):
 
 def feed():
     LENGTH = 4
-    buffer = bytes()
+    buffer = bytearray()
     while True:
         while len(buffer) < LENGTH:
             buffer += yield None
@@ -102,5 +102,5 @@ def feed():
         except ValidationError:
             packet = None
         finally:
-            buffer = buffer[_len:]
+            del buffer[:_len]
             buffer += yield packet

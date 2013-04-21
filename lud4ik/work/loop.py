@@ -7,32 +7,19 @@ from select import epoll, EPOLLIN, EPOLLHUP, EPOLLERR
 from .delayedcall import DelayedCall
 
 
-class EventLoop:
+class TimeLoop:
 
     DEFAULT_TIMEOUT = 1
-    READ_ONLY = EPOLLIN | EPOLLHUP | EPOLLERR
 
     def __init__(self):
-        self.poller = epoll()
-        self.handlers = {}
         self._running = False
         self._soon = []
         self._later = []
-        self._executors = []
         self.timeout = self.DEFAULT_TIMEOUT
         self._soon_lock = threading.RLock()
 
-    def run_once(self, timeout):
-        for (fd, event) in self.poller.poll(timeout):
-            self.handlers[fd](fd, event)
-            self.process_delayed_calls()
-
     def run(self):
         self._running = True
-        while self._running:
-            for (fd, event) in self.poller.poll(self.timeout):
-                self.handlers[fd](fd, event)
-                self.process_delayed_calls()
 
     def process_delayed_calls(self):
         with self._soon_lock:
@@ -60,13 +47,12 @@ class EventLoop:
 
     def stop(self):
         self._running = False
-        for executor in self._executors:
-            executor.shutdown(wait=False)
 
     def call_soon(self, cb, *args):
         dcall = DelayedCall(self, time.monotonic(), cb, args)
         if dcall is not None:
-            heapq.heappush(self._soon, dcall)
+            with self._soon_lock:
+                heapq.heappush(self._soon, dcall)
             return dcall
 
     def call_later(self, delay, cb, *args):
@@ -75,18 +61,50 @@ class EventLoop:
             heapq.heappush(self._later, dcall)
             return dcall
 
-    def call_soon_threadsafe(self, cb, *args):
-        dcall = DelayedCall(self, time.monotonic(), cb, args)
-        if dcall is not None:
-            with self._soon_lock:
-                heapq.heappush(self._soon, dcall)
-            return dcall
+
+def accept(factory, event):
+    if event in (EPOLLHUP, EPOLLERR):
+        return
+
+    EDGE_MASK = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLHUP | EPOLLERR
+    eventloop = factory.eventloop
+    conn, addr = factory.socket.accept()
+    conn.setblocking(False)
+    protocol = factory.create_protocol()
+    protocol.connection_made()
+    transport = protocol.transport
+    transport.conn, transport.protocol = conn, protocol
+    eventloop.handlers[conn.fileno()] = protocol.transport
+    eventloop.poller.register(conn, EDGE_MASK)
+
+
+class EventLoop(TimeLoop):
+
+    def __init__(self):
+        self.poller = epoll()
+        self.handlers = {}
+        self._executors = []
+
+    def run_once(self, timeout):
+        for (fd, event) in self.poller.poll(timeout):
+            self.handlers[fd](event)
+            self.process_delayed_calls()
+
+    def run(self):
+        super().run()
+        while self._running:
+            self.run_once(self.timeout)
+
+    def stop(self):
+        super.stop()
+        for executor in self._executors:
+            executor.shutdown(wait=False)
 
     def run_in_executor(self, executor, cb, *args):
         future = executor.submit(cb, self, *args)
         self._executors.append(executor)
         return future
 
-    def register_server(self, sock, handler, mask=READ_ONLY):
-        self.handlers[sock.fileno()] = partial(handler, self.handlers)
-        self.poller.register(sock, mask)
+    def register_factory(self, factory):
+        self.handlers[factory.socket.fileno()] = partial(accept, factory)
+        self.poller.register(factory.socket, EPOLLIN | EPOLLHUP | EPOLLERR)
