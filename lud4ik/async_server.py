@@ -1,5 +1,6 @@
 from operator import attrgetter, methodcaller
 
+from work.models import cmd
 from work.protocol import feed
 from work.cmdargs import get_cmd_args
 from work.utils import get_random_hash
@@ -9,9 +10,6 @@ from work.layer import Factory, Protocol
 
 class CommandProtocol(Protocol):
 
-    method = lambda x: methodcaller("lower")(attrgetter("__name__")(
-                                      attrgetter("__class__")(x)))
-
     def connection_made(self):
         self.feeder = feed()
         next(self.feeder)
@@ -20,7 +18,7 @@ class CommandProtocol(Protocol):
     def data_received(self, data):
         packet = self.feeder.send(data)
         if packet:
-            getattr(self, self.method(packet))(packet)
+            getattr(self, packet.__class__.__name__.lower())(packet)
 
     def send_to_all(self, data):
         for client in self.factory.clients[:]:

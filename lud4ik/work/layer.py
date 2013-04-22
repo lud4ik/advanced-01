@@ -28,16 +28,18 @@ class Transport:
         if any(event & e for e in (EPOLLHUP, EPOLLERR)):
             return
         if event & EPOLLIN:
-            try:
-                while True:
+            while True:
+                try:
                     _input = self.conn.recv(self.CHUNK_SIZE)
                     if not _input:
                         break
                     self.in_buffer += _input
-            except BlockingIOError:
-                pass
-            except OSError as exc:
-                self.protocol.connection_lost(exc)
+                except BlockingIOError:
+                    pass
+                except OSError as exc:
+                    self.protocol.connection_lost(exc)
+                    break
+
             self.protocol.data_received(self.in_buffer)
             self.in_buffer.clear()
         if event & EPOLLOUT:
