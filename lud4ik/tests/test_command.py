@@ -85,3 +85,8 @@ class CommandTestCase(unittest.TestCase):
             cmd = Cmd(TEST_COMMAND_ID)
         self.assertTrue(Test.data == PongD.data)
         self.assertTrue(Test.cmd.id == TEST_COMMAND_ID)
+
+
+if __name__ == '__main__':
+    import unittest
+    unittest.main()

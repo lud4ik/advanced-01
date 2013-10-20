@@ -8,8 +8,7 @@ import subprocess
 
 from work.utils import get_msg
 from work.protocol import Packet
-from sync_server import CommandServer
-from work.models import (cmd, Connected, Pong, PongD, AckQuit, AckFinish,
+from work.models import (Connected, Pong, PongD, AckQuit, AckFinish,
                          Connect, Ping, PingD, Quit, Finish)
 
 
@@ -70,3 +69,8 @@ class ServerTestCase(unittest.TestCase):
         self.assertIsInstance(reply, AckFinish)
         self.server.wait(timeout=self.TERMINATE_TIMEOUT)
         self.assertTrue(self.server.poll() is not None)
+
+
+if __name__ == '__main__':
+    import unittest
+    unittest.main()
